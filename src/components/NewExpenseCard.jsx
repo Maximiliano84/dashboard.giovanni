@@ -91,7 +91,7 @@ export default function NewExpenseCard({ categories, onCreated }) {
                   <SelectValue placeholder="Elegí una categoría" />
                 </SelectTrigger>
 
-                <SelectContent>
+                <SelectContent className="bg-white border border-stone-200 shadow-lg">
                   {categories.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}

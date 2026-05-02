@@ -17,48 +17,44 @@ export default function Dashboard() {
   const [cierreOpen, setCierreOpen] = useState(false);
   const [period, setPeriod] = useState("today");
 
-  const today = new Date().toISOString().slice(0, 10);
-
   // ======================
-  // NORMALIZAR FECHA
+  // NORMALIZAR FECHA 🔥 (CLAVE)
   // ======================
   const normalizeDate = (d) => {
     if (!d) return null;
-    if (typeof d === "string") return d;
-    if (d?.toDate) return d.toDate().toISOString().slice(0, 10);
+
+    if (d?.toDate) {
+      return d.toDate().toISOString().slice(0, 10);
+    }
+
+    if (typeof d === "string") {
+      return d;
+    }
+
     return null;
   };
 
   // ======================
-  // HELPERS DE PERIODO
+  // FILTROS SIN BUG (STRING)
   // ======================
-  const isSameDay = (dateStr) => dateStr === today;
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const isSameDay = (dateStr) => dateStr === todayStr;
+
+  const isThisMonth = (dateStr) =>
+    dateStr.slice(0, 7) === todayStr.slice(0, 7);
+
+  const isThisYear = (dateStr) =>
+    dateStr.slice(0, 4) === todayStr.slice(0, 4);
 
   const isThisWeek = (dateStr) => {
+    const today = new Date();
     const d = new Date(dateStr);
-    const now = new Date();
 
-    const firstDay = new Date(now);
-    firstDay.setDate(now.getDate() - now.getDay());
+    const start = new Date(today);
+    start.setDate(today.getDate() - today.getDay());
 
-    return d >= firstDay && d <= now;
-  };
-
-  const isThisMonth = (dateStr) => {
-    const d = new Date(dateStr);
-    const now = new Date();
-
-    return (
-      d.getMonth() === now.getMonth() &&
-      d.getFullYear() === now.getFullYear()
-    );
-  };
-
-  const isThisYear = (dateStr) => {
-    const d = new Date(dateStr);
-    const now = new Date();
-
-    return d.getFullYear() === now.getFullYear();
+    return d >= start && d <= today;
   };
 
   const filterByPeriod = (item) => {
@@ -74,7 +70,7 @@ export default function Dashboard() {
   };
 
   // ======================
-  // CARGA FIREBASE
+  // FIREBASE
   // ======================
   const loadData = async () => {
     try {
@@ -129,7 +125,7 @@ export default function Dashboard() {
   if (loading) return <div className="text-stone-500">Cargando...</div>;
 
   // ======================
-  // MÉTRICAS FILTRADAS
+  // MÉTRICAS
   // ======================
   const ventasFiltradas = sales.filter(filterByPeriod);
   const gastosFiltrados = expenses.filter(filterByPeriod);
@@ -146,6 +142,16 @@ export default function Dashboard() {
     (acc, s) => acc + (s.quantity || 0),
     0
   );
+
+  // ======================
+  // LABEL
+  // ======================
+  const periodLabel = {
+    today: "hoy",
+    week: "esta semana",
+    month: "este mes",
+    year: "este año",
+  };
 
   // ======================
   // TREND
@@ -209,7 +215,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 fade-up">
-
       {/* HEADER */}
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
@@ -231,9 +236,9 @@ export default function Dashboard() {
               <button
                 key={p.key}
                 onClick={() => setPeriod(p.key)}
-                className={`px-3 py-1.5 rounded-lg text-sm ${period === p.key
-                    ? "bg-orange-600 text-white"
-                    : "bg-stone-100 text-stone-600"
+                className={`px-3 py-1.5 rounded-lg text-sm transition ${period === p.key
+                  ? "bg-orange-600 text-white"
+                  : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                   }`}
               >
                 {p.label}
@@ -262,7 +267,7 @@ export default function Dashboard() {
       {/* STATS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Ventas hoy"
+          label={`Ventas ${periodLabel[period]}`}
           value={formatARS(totalVentas)}
           sub={`${ventasFiltradas.length} operaciones`}
           icon={ShoppingCart}
@@ -270,7 +275,7 @@ export default function Dashboard() {
         />
 
         <StatCard
-          label="Gastos hoy"
+          label={`Gastos ${periodLabel[period]}`}
           value={formatARS(totalGastos)}
           sub={`${gastosFiltrados.length} registrados`}
           icon={Wallet}
@@ -278,15 +283,34 @@ export default function Dashboard() {
         />
 
         <StatCard
-          label="Ganancia hoy"
+          label={`Ganancia ${periodLabel[period]}`}
           value={formatARS(ganancia)}
-          sub={ganancia >= 0 ? "Positivo" : "Negativo"}
+          sub={
+            ganancia > 0
+              ? "Positivo"
+              : ganancia < 0
+                ? "Negativo"
+                : "Sin movimientos"
+          }
           icon={Coins}
-          accent={ganancia >= 0 ? "emerald" : "rose"}
+          accent={
+            ganancia > 0
+              ? "emerald"
+              : ganancia < 0
+                ? "rose"
+                : "amber"
+          }
+          trend={
+            ganancia > 0
+              ? "up"
+              : ganancia < 0
+                ? "down"
+                : undefined
+          }
         />
 
         <StatCard
-          label="Pizzas vendidas hoy"
+          label={`Pizzas ${periodLabel[period]}`}
           value={pizzas.toString()}
           sub="unidades"
           icon={Pizza}
