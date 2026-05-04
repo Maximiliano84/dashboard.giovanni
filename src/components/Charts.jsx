@@ -1,4 +1,3 @@
-import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { TrendingUp } from "lucide-react";
 import { formatARS, formatDateAR } from "../lib/api";
@@ -88,31 +87,33 @@ export function TrendChart({ data, title = "Tendencia últimos 30 días", testid
 
 export function TopVarietiesChart({ data, title = "Top variedades", testid }) {
   return (
-    <Card data-testid={testid}>
-      <CardHeader><CardTitle className="font-display text-base text-stone-800">{title}</CardTitle></CardHeader>
-      <CardContent>
+    <Card className="h-full flex flex-col" data-testid={testid}>
+      <CardHeader className="pb-2">
+        <CardTitle className="font-display text-base text-stone-800">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex-1">
         {data.length === 0 ? (
           <ChartEmpty text="Aún no hay ventas." />
         ) : (
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} layout="vertical" margin={BAR_MARGIN}>
-                <CartesianGrid stroke="#f5f5f4" horizontal={false} />
-                <XAxis type="number" tick={AXIS_TICK_X} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="variety_name" tick={AXIS_TICK_BAR_Y} axisLine={false} tickLine={false} width={90} />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  formatter={topVarietiesFormatter}
-                  labelFormatter={emptyLabelFormatter}
-                />
-                <Bar dataKey="quantity" radius={BAR_RADIUS}>
-                  {data.map((entry, idx) => (
-                    <Cell key={entry.variety_id} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} layout="vertical" margin={BAR_MARGIN}>
+              <CartesianGrid stroke="#f5f5f4" horizontal={false} />
+              <XAxis type="number" tick={AXIS_TICK_X} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="variety_name" tick={AXIS_TICK_BAR_Y} axisLine={false} tickLine={false} width={90} />
+              <Tooltip
+                contentStyle={TOOLTIP_STYLE}
+                formatter={topVarietiesFormatter}
+                labelFormatter={emptyLabelFormatter}
+              />
+              <Bar dataKey="quantity" radius={BAR_RADIUS}>
+                {data.map((entry, idx) => (
+                  <Cell key={entry.variety_id} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+
         )}
       </CardContent>
     </Card>

@@ -3,12 +3,13 @@ import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
 import { formatARS, formatDateAR } from "../lib/api";
 import { Trash2 } from "lucide-react";
+import HistorialChart from "../components/HistorialChart";
 
 export default function Historial() {
   const [items, setItems] = useState([]);
-  const [typeFilter, setTypeFilter] = useState("all"); // all | sale | expense
-  const [from, setFrom] = useState(""); // YYYY-MM-DD
-  const [to, setTo] = useState("");   // YYYY-MM-DD
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   // ---------- helpers ----------
   const normalizeDate = (d) => {
@@ -82,10 +83,12 @@ export default function Historial() {
     let gastos = 0;
     let countSales = 0;
     let countExpenses = 0;
+    let pizzas = 0;
 
     filtered.forEach((i) => {
       if (i.type === "sale") {
         ventas += i.amount;
+        pizzas += i.quantity || 0;
         countSales++;
       } else {
         gastos += i.amount;
@@ -99,6 +102,7 @@ export default function Historial() {
       ganancia: ventas - gastos,
       countSales,
       countExpenses,
+      pizzas,
     };
   }, [filtered]);
 
@@ -113,12 +117,41 @@ export default function Historial() {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
   };
 
+  const chartData = useMemo(() => {
+    const map = {};
+
+    filtered.forEach((i) => {
+      if (!i.date) return;
+
+      if (!map[i.date]) {
+        map[i.date] = {
+          date: i.date,
+          ventas: 0,
+          gastos: 0,
+        };
+      }
+
+      if (i.type === "sale") {
+        map[i.date].ventas += i.amount;
+      } else {
+        map[i.date].gastos += i.amount;
+      }
+    });
+
+    return Object.values(map)
+      .map((d) => ({
+        ...d,
+        ganancia: d.ventas - d.gastos,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [filtered]);
+
   // ---------- UI ----------
   return (
     <div className="space-y-6 fade-up">
       <h1 className="text-2xl font-bold">Historial</h1>
 
-      {/* 🔍 FILTROS */}
+      {/* FILTROS */}
       <div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3 items-end">
         <div>
           <label className="text-xs text-stone-500">Tipo</label>
@@ -165,10 +198,11 @@ export default function Historial() {
         </button>
       </div>
 
-      {/* 📊 RESUMEN */}
+      {/* RESUMEN */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard title="Ventas" value={formatARS(resumen.ventas)} sub={`${resumen.countSales} ops`} color="emerald" />
         <SummaryCard title="Gastos" value={formatARS(resumen.gastos)} sub={`${resumen.countExpenses} ops`} color="rose" />
+
         <SummaryCard
           title="Ganancia"
           value={formatARS(resumen.ganancia)}
@@ -187,10 +221,16 @@ export default function Historial() {
                 : "amber"
           }
         />
-        <SummaryCard title="Movimientos" value={filtered.length.toString()} sub="total" color="orange" />
+
+        <SummaryCard
+          title="Pizzas vendidas"
+          value={resumen.pizzas.toString()}
+          sub="unidades"
+          color="orange"
+        />
       </div>
 
-      {/* 📋 TABLA */}
+      {/* TABLA */}
       <div className="bg-white border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-stone-50 text-xs uppercase text-stone-500">
@@ -207,20 +247,35 @@ export default function Historial() {
           <tbody>
             {filtered.map((i) => (
               <tr key={i.id} className="border-b hover:bg-stone-50">
-                <td className="p-3">{i.type === "sale" ? "Venta" : "Gasto"}</td>
-                <td className="p-3 font-medium">{i.name}</td>
+                <td className="p-3">
+                  <span className={`text-xs font-semibold ${i.type === "sale" ? "text-emerald-600" : "text-rose-600"
+                    }`}>
+                    {i.type === "sale" ? "Venta" : "Gasto"}
+                  </span>
+                </td>
+
+                <td className={`p-3 font-medium ${i.type === "sale" ? "text-stone-900" : "text-rose-700"
+                  }`}>
+                  {i.name}
+                </td>
+
                 <td className="p-3 text-right">{i.quantity}</td>
+
                 <td
                   className={`p-3 text-right font-semibold ${i.type === "sale"
-                      ? "text-emerald-600"
-                      : "text-rose-600"
+                    ? "text-emerald-600"
+                    : "text-rose-600"
                     }`}
                 >
-                  {i.type === "sale" ? "+" : "-"} {formatARS(i.amount)}
+                  {i.type === "sale"
+                    ? `+ ${formatARS(i.amount)}`
+                    : `- ${formatARS(i.amount)}`}
                 </td>
+
                 <td className="p-3 text-stone-500">
                   {formatDateAR(i.date)}
                 </td>
+
                 <td className="p-3">
                   <button onClick={() => remove(i)}>
                     <Trash2 className="w-4 h-4 text-rose-600" />
@@ -237,11 +292,13 @@ export default function Historial() {
           </div>
         )}
       </div>
+
+      <HistorialChart data={chartData} />
     </div>
   );
 }
 
-// ---------- mini card resumen ----------
+// ---------- mini card ----------
 function SummaryCard({ title, value, sub, color }) {
   const colors = {
     emerald: "text-emerald-600",

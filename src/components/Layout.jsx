@@ -29,8 +29,8 @@ export default function Layout() {
 
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 inset-x-0 z-30 flex items-center justify-between border-b border-stone-200 bg-white px-4 h-14">
-        <div className="flex items-center gap-2">
-          <img src="/giovanni-logo.png" alt="Giovanni" className="h-9 w-auto" data-testid="logo-mobile" />
+        <div className="flex items-center shrink-0">
+          <img src="/Giovanni1.png" alt="Giovanni" className="h-20 sm:h-20 md:h-14 object-contain" />
         </div>
         <button
           data-testid="boton-menu-mobile"
@@ -44,6 +44,7 @@ export default function Layout() {
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-40 flex" data-testid="mobile-drawer">
+
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
           <aside className="relative w-72 bg-white h-full flex flex-col border-r border-stone-200 fade-up">
             <SidebarContent />
@@ -66,9 +67,12 @@ export default function Layout() {
 function SidebarContent() {
   return (
     <>
-      <div className="px-6 py-6 border-b border-stone-200">
-        <div className="flex items-center justify-center">
-          <img src="/giovanni-logo.png" alt="Giovanni - Pizza e Passione" className="h-20 w-auto" data-testid="logo-sidebar" />
+      <div className="px-2 py-2 border-b border-stone-200">
+        <div className="border-b bg-white">
+          <img
+            src="/Giovanni1.png"
+            className="w-44 object-contain mx-auto my-3"
+          />
         </div>
         <div className="text-center text-[11px] uppercase tracking-[0.18em] text-stone-500 mt-2">Control de pizzería</div>
       </div>
@@ -81,10 +85,9 @@ function SidebarContent() {
             end={item.end}
             data-testid={item.testid}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                isActive
-                  ? "bg-orange-50 text-orange-700"
-                  : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
+                ? "bg-orange-50 text-orange-700"
+                : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
               }`
             }
           >

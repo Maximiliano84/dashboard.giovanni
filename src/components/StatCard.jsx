@@ -42,7 +42,7 @@ export default function StatCard({
         bg-white border ${styles.border}
         shadow-sm
         transition-all duration-200
-        hover:shadow-lg hover:-translate-y-1
+        hover:shadow-xl hover:-translate-y-1
       `}
       data-testid={testid}
     >

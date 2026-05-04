@@ -221,7 +221,7 @@ export default function Dashboard() {
           <p className="text-xs font-semibold uppercase tracking-[0.1em] text-stone-500">
             Panel general
           </p>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold text-stone-900 mt-1">
+          <h1 className="text-3xl font-bold text-orange-600">
             Tu pizzería de un vistazo
           </h1>
 
@@ -319,11 +319,14 @@ export default function Dashboard() {
       </div>
 
       {/* CHARTS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+        <div className="lg:col-span-2 h-full">
           <TrendChart data={trendData} />
         </div>
-        <TopVarietiesChart data={topVarieties} />
+
+        <div className="h-full">
+          <TopVarietiesChart data={topVarieties} />
+        </div>
       </div>
 
       {/* RECIENTES */}

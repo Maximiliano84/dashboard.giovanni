@@ -20,14 +20,14 @@ export default function CategoryDialog({
   onSaved,
 }) {
   const editing = Boolean(category);
-  const [name, setName] = useState(category?.name || "");
+  const [name, setName] = useState("");
 
+  // 🔥 cargar datos al abrir (sin bugs)
   useEffect(() => {
-    if (!open) return;
-
-    setName(category?.name || "");
-  }, [open]);
-
+    if (open) {
+      setName(category?.name || "");
+    }
+  }, [open, category]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -39,13 +39,13 @@ export default function CategoryDialog({
     try {
       if (editing) {
         await updateDoc(doc(db, "expense_categories", category.id), {
-          name,
+          name: name.trim(),
         });
 
         toast.success("Categoría actualizada");
       } else {
         await addDoc(collection(db, "expense_categories"), {
-          name,
+          name: name.trim(),
           created_at: new Date(),
         });
 
@@ -56,20 +56,23 @@ export default function CategoryDialog({
       onOpenChange(false);
     } catch (err) {
       console.error(err);
-      toast.error("Error");
+      toast.error("Error al guardar");
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+
       <DialogContent>
+
         <DialogHeader>
           <DialogTitle>
             {editing ? "Editar categoría" : "Nueva categoría"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4 mt-2">
+
           <Input
             autoFocus
             placeholder="Ej: Harina"
@@ -77,7 +80,8 @@ export default function CategoryDialog({
             onChange={(e) => setName(e.target.value)}
           />
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-4">
+
             <Button
               type="button"
               variant="ghost"
@@ -92,8 +96,10 @@ export default function CategoryDialog({
             >
               {editing ? "Guardar" : "Crear"}
             </Button>
+
           </div>
         </form>
+
       </DialogContent>
     </Dialog>
   );
