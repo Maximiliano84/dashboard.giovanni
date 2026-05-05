@@ -6,6 +6,7 @@ import Variedades from "./pages/Variedades";
 import Gastos from "./pages/Gastos";
 import Categorias from "./pages/Categorias";
 import Historial from "./pages/Historial";
+import Costos from "./pages/Costos";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/gastos" element={<Gastos />} />
           <Route path="/categorias" element={<Categorias />} />
           <Route path="/historial" element={<Historial />} />
+          <Route path="/costos" element={<Costos />} />
         </Route>
       </Routes>
     </BrowserRouter>

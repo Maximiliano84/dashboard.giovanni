@@ -10,7 +10,9 @@ const navItems = [
   { to: "/historial", label: "Historial", icon: History, testid: "nav-historial" },
   { to: "/variedades", label: "Variedades", icon: Pizza, testid: "nav-variedades" },
   { to: "/categorias", label: "Categorías", icon: Tags, testid: "nav-categorias" },
+  { to: "/costos", label: "Costos", icon: Flame, testid: "nav-costos" },
 ];
+
 
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
