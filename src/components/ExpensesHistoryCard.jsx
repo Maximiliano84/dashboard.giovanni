@@ -5,157 +5,144 @@ import { formatARS, formatDateAR } from "../lib/api";
 
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "./ui/dialog";
-
 import { Receipt, Trash2 } from "lucide-react";
+
+import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 import { toast } from "sonner";
 
-export default function ExpensesHistoryCard({ expenses, onDeleted }) {
+export default function ExpensesHistoryCard({ expenses = [], onDeleted }) {
   const [toDelete, setToDelete] = useState(null);
+  const [loadingDelete, setLoadingDelete] = useState(false);
 
-  const total = expenses.reduce(
-    (acc, e) => acc + (e.amount || 0),
+  // 🔥 ordenar por fecha (seguro)
+  const sortedExpenses = [...expenses].sort((a, b) => {
+    const aDate = a?.created_at?.seconds
+      ? a.created_at.seconds * 1000
+      : new Date(a?.created_at || 0).getTime();
+
+    const bDate = b?.created_at?.seconds
+      ? b.created_at.seconds * 1000
+      : new Date(b?.created_at || 0).getTime();
+
+    return bDate - aDate;
+  });
+
+  // 🔥 total seguro
+  const total = sortedExpenses.reduce(
+    (acc, e) => acc + (Number(e.amount) || 0),
     0
   );
 
+  // ================= DELETE =================
+  const handleDelete = async () => {
+    if (!toDelete) return;
+
+    try {
+      setLoadingDelete(true);
+
+      await deleteDoc(doc(db, "expenses", toDelete.id));
+
+      toast.success("Gasto eliminado");
+
+      onDeleted && onDeleted();
+
+      setToDelete(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al eliminar");
+    } finally {
+      setLoadingDelete(false);
+    }
+  };
+
   return (
-    <Card className="lg:col-span-2">
-      <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="text-base">
-          Historial de gastos
-        </CardTitle>
+    <>
+      <Card className="lg:col-span-2 h-[560px] flex flex-col">
+        {/* HEADER */}
+        <CardHeader className="flex-row items-center justify-between border-b shrink-0">
+          <CardTitle className="text-base text-stone-800">
+            Historial de hoy
+          </CardTitle>
 
-        <div className="text-xs text-stone-500">
-          <span className="mr-2">{expenses.length} gastos</span> ·
-          <span className="ml-2 font-semibold">
-            {formatARS(total)}
-          </span>
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-0">
-        {expenses.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="divide-y">
-            {expenses.map((e) => (
-              <ExpenseRow
-                key={e.id}
-                expense={e}
-                onDelete={() => setToDelete(e)}
-              />
-            ))}
+          <div className="text-xs text-stone-500">
+            <span className="mr-2">
+              {sortedExpenses.length} gastos
+            </span>
+            ·
+            <span className="ml-2 font-semibold text-stone-700">
+              {formatARS(total)}
+            </span>
           </div>
-        )}
-      </CardContent>
+        </CardHeader>
 
-      {/* 🔴 MODAL ELIMINAR */}
-      <Dialog open={!!toDelete} onOpenChange={() => setToDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Eliminar gasto</DialogTitle>
-            <DialogDescription>
-              ¿Seguro que querés eliminar este gasto?
-            </DialogDescription>
-          </DialogHeader>
+        {/* CONTENT */}
+        <CardContent className="flex-1 overflow-y-auto p-0">
+          {sortedExpenses.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="divide-y">
+              {sortedExpenses.map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center justify-between p-4 hover:bg-stone-50 transition"
+                >
+                  {/* LEFT */}
+                  <div className="min-w-0">
+                    <div className="font-semibold text-stone-900 truncate">
+                      {e.category_name || "Sin categoría"}
+                    </div>
 
-          <div className="flex justify-end gap-2 mt-4">
-            <Button
-              variant="ghost"
-              onClick={() => setToDelete(null)}
-            >
-              Cancelar
-            </Button>
+                    {e.description && (
+                      <div className="text-sm text-stone-500 truncate">
+                        {e.description}
+                      </div>
+                    )}
 
-            <Button
-              className="bg-rose-600 hover:bg-rose-700"
-              onClick={async () => {
-                try {
-                  await deleteDoc(
-                    doc(db, "expenses", toDelete.id)
-                  );
+                    <div className="text-xs text-stone-400 mt-1">
+                      {formatDateAR(e.date)}
+                    </div>
+                  </div>
 
-                  toast.success("Gasto eliminado");
+                  {/* RIGHT */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="font-semibold text-stone-900">
+                      {formatARS(e.amount)}
+                    </div>
 
-                  setToDelete(null);
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setToDelete(e)}
+                    >
+                      <Trash2 className="w-4 h-4 text-rose-600" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-                  onDeleted && onDeleted(); // 🔥 refresca lista
-                } catch (err) {
-                  console.error(err);
-                  toast.error("Error al eliminar");
-                }
-              }}
-            >
-              Eliminar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </Card>
+      {/* 🔴 MODAL UNIFICADO */}
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        onConfirm={handleDelete}
+        loading={loadingDelete}
+        title="Eliminar gasto"
+        description={`¿Eliminar ${toDelete?.category_name || "este gasto"
+          }?`}
+      />
+    </>
   );
 }
 
-// ==========================
-// FILA
-// ==========================
-function ExpenseRow({ expense, onDelete }) {
-  const category =
-    expense.category_name ||
-    expense.category || // fallback viejo
-    "Sin categoría";
-
-  return (
-    <div className="flex items-center justify-between p-4 hover:bg-stone-50">
-      <div>
-        {/* 🔥 CATEGORÍA (TÍTULO GRANDE) */}
-        <div className="font-semibold text-stone-900 text-base">
-          {category}
-        </div>
-
-        {/* 🟡 DESCRIPCIÓN (OPCIONAL) */}
-        {expense.description && (
-          <div className="text-sm text-stone-500">
-            {expense.description}
-          </div>
-        )}
-
-        {/* 🟡 FECHA */}
-        <div className="text-xs text-stone-400 mt-1">
-          {formatDateAR(expense.date)}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="font-semibold">
-          {formatARS(expense.amount)}
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onDelete}
-        >
-          <Trash2 className="w-4 h-4 text-rose-600" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ==========================
-// EMPTY
-// ==========================
+// ================= EMPTY =================
 function EmptyState() {
   return (
-    <div className="text-center py-16">
-      <Receipt className="w-8 h-8 mx-auto text-stone-400" />
+    <div className="h-full flex flex-col items-center justify-center">
+      <Receipt className="w-8 h-8 text-stone-400" />
       <p className="text-sm text-stone-500 mt-3">
         Sin gastos registrados.
       </p>

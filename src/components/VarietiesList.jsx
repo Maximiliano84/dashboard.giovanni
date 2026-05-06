@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { formatARS } from "../lib/api";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
@@ -9,46 +9,70 @@ import { toast } from "sonner";
 import { db } from "../firebase";
 import { doc, deleteDoc } from "firebase/firestore";
 
-export default function VarietiesList({ items, onAdd, onEdit, onChanged }) {
+// 🔥 MODAL GLOBAL
+import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
-  const remove = async (variety) => {
-    const confirm = window.confirm(`¿Eliminar "${variety.name}"?`);
-    if (!confirm) return;
+export default function VarietiesList({ items, onAdd, onEdit, onChanged }) {
+  const [toDelete, setToDelete] = useState(null);
+  const [loadingDelete, setLoadingDelete] = useState(false);
+
+  // ================= DELETE =================
+  const handleDelete = async () => {
+    if (!toDelete) return;
 
     try {
-      await deleteDoc(doc(db, "varieties", variety.id));
+      setLoadingDelete(true);
+
+      await deleteDoc(doc(db, "varieties", toDelete.id));
 
       toast.success("Variedad eliminada");
 
-      onChanged && onChanged(); // 🔥 recarga lista
+      setToDelete(null);
+
+      onChanged && onChanged();
     } catch (err) {
       console.error("ERROR ELIMINANDO:", err);
       toast.error("Error al eliminar");
+    } finally {
+      setLoadingDelete(false);
     }
   };
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        {items.length === 0 ? (
-          <EmptyState onAdd={onAdd} />
-        ) : (
-          <div className="divide-y divide-stone-100">
-            {items.map((v) => (
-              <VarietyRow
-                key={v.id}
-                variety={v}
-                onEdit={onEdit}
-                onRemove={remove}
-              />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardContent className="p-0">
+          {items.length === 0 ? (
+            <EmptyState onAdd={onAdd} />
+          ) : (
+            <div className="divide-y divide-stone-100">
+              {items.map((v) => (
+                <VarietyRow
+                  key={v.id}
+                  variety={v}
+                  onEdit={onEdit}
+                  onRemove={() => setToDelete(v)} // 🔥 abrimos modal
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 🔴 MODAL UNIFICADO */}
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        loading={loadingDelete}
+        title="Eliminar variedad"
+        description={`Esto eliminará la pizza "${toDelete?.name}". Esta acción no se puede deshacer.`}
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }
 
+// ================= FILA =================
 function VarietyRow({ variety, onEdit, onRemove }) {
   return (
     <div
@@ -59,10 +83,12 @@ function VarietyRow({ variety, onEdit, onRemove }) {
         <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
           <Pizza className="w-5 h-5 text-orange-600" />
         </div>
+
         <div className="min-w-0">
           <div className="font-medium text-stone-900 truncate">
             {variety.name}
           </div>
+
           <div className="text-xs text-stone-500">
             Precio unitario
           </div>
@@ -86,7 +112,7 @@ function VarietyRow({ variety, onEdit, onRemove }) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => onRemove(variety)}
+          onClick={onRemove}
           data-testid={`boton-eliminar-variedad-${variety.id}`}
         >
           <Trash2 className="w-4 h-4 text-rose-600" />
@@ -96,6 +122,7 @@ function VarietyRow({ variety, onEdit, onRemove }) {
   );
 }
 
+// ================= EMPTY =================
 function EmptyState({ onAdd }) {
   return (
     <div className="text-center py-16 px-6">

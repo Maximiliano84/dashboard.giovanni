@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
     collection,
     getDocs,
@@ -9,6 +9,8 @@ import {
 import { db } from "../firebase";
 import { formatARS } from "../lib/api";
 import { Trash2 } from "lucide-react";
+
+import ConfirmDeleteDialog from "../components/ConfirmDeleteDialog";
 
 import {
     Dialog,
@@ -22,8 +24,9 @@ export default function Costos() {
     const [recipes, setRecipes] = useState({});
     const [settingsId, setSettingsId] = useState(null);
     const [fixedCosts, setFixedCosts] = useState([]);
+    const [sales, setSales] = useState([]);
 
-    // modal state
+    // modales
     const [openAdd, setOpenAdd] = useState(false);
     const [newName, setNewName] = useState("");
     const [activePizza, setActivePizza] = useState(null);
@@ -31,19 +34,24 @@ export default function Costos() {
     const [openFixed, setOpenFixed] = useState(false);
     const [newFixed, setNewFixed] = useState("");
 
+    // deletes
+    const [toDeleteIngredient, setToDeleteIngredient] = useState(null);
+    const [toDeleteFixed, setToDeleteFixed] = useState(null);
+
     // ================= LOAD =================
     useEffect(() => {
         const load = async () => {
-            const [vSnap, rSnap, sSnap] = await Promise.all([
+            const [vSnap, rSnap, sSnap, salesSnap] = await Promise.all([
                 getDocs(collection(db, "varieties")),
                 getDocs(collection(db, "recipes")),
                 getDocs(collection(db, "settings")),
+                getDocs(collection(db, "sales")),
             ]);
 
-            const v = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const v = vSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
             const r = {};
-            rSnap.docs.forEach(d => {
+            rSnap.docs.forEach((d) => {
                 const data = d.data();
                 r[data.variety_id] = {
                     id: d.id,
@@ -60,16 +68,22 @@ export default function Costos() {
                 sid = data.id;
             }
 
+            const s = salesSnap.docs.map((d) => ({
+                id: d.id,
+                ...d.data(),
+            }));
+
             setVarieties(v);
             setRecipes(r);
             setFixedCosts(fc);
             setSettingsId(sid);
+            setSales(s);
         };
 
         load();
     }, []);
 
-    // ================= FIXED COSTS =================
+    // ================= FIXED =================
     const updateFixedCosts = async (newCosts) => {
         setFixedCosts(newCosts);
 
@@ -93,7 +107,7 @@ export default function Costos() {
 
         if (rec?.id) {
             await updateDoc(doc(db, "recipes", rec.id), { items });
-            setRecipes(prev => ({
+            setRecipes((prev) => ({
                 ...prev,
                 [varietyId]: { ...rec, items },
             }));
@@ -103,7 +117,7 @@ export default function Costos() {
                 items,
             });
 
-            setRecipes(prev => ({
+            setRecipes((prev) => ({
                 ...prev,
                 [varietyId]: { id: ref.id, items },
             }));
@@ -115,15 +129,63 @@ export default function Costos() {
         return local + totalFixed;
     };
 
+    // ================= RENTABILIDAD =================
+    const rentabilidad = useMemo(() => {
+        let totalVentas = 0;
+        let totalGanancia = 0;
+        let totalPizzas = 0;
+
+        sales.forEach((s) => {
+            const variety = varieties.find((v) => v.id === s.variety_id);
+            if (!variety) return;
+
+            const items = recipes[variety.id]?.items || [];
+            const costo = getCost(items);
+
+            const precio = s.unit_price || variety.price || 0; // 🔥 importante
+            const cantidad = s.quantity || 0;
+
+            const ingreso = precio * cantidad;
+            const ganancia = (precio - costo) * cantidad;
+
+            totalVentas += ingreso;
+            totalGanancia += ganancia;
+            totalPizzas += cantidad;
+        });
+
+        return {
+            promedioGanancia: totalPizzas ? totalGanancia / totalPizzas : 0,
+            margenPromedio: totalVentas
+                ? (totalGanancia / totalVentas) * 100
+                : 0,
+        };
+    }, [sales, varieties, recipes, totalFixed]);
+
     return (
         <div className="p-6 space-y-6">
             <h1 className="text-2xl font-bold">Costos</h1>
 
+            {/* RESUMEN */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white border rounded-xl p-4">
+                    <p className="text-xs text-stone-500">Ganancia promedio</p>
+                    <p className="text-xl font-bold text-emerald-600">
+                        {formatARS(rentabilidad.promedioGanancia)}
+                    </p>
+                </div>
+
+                <div className="bg-white border rounded-xl p-4">
+                    <p className="text-xs text-stone-500">Margen promedio</p>
+                    <p className="text-xl font-bold text-orange-600">
+                        {rentabilidad.margenPromedio.toFixed(1)}%
+                    </p>
+                </div>
+            </div>
+
             {/* COSTOS FIJOS */}
             <div className="bg-white border rounded-xl p-4 space-y-3">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between">
                     <h2 className="font-bold">Costos fijos</h2>
-
                     <button
                         onClick={() => setOpenFixed(true)}
                         className="text-orange-600 text-sm"
@@ -150,9 +212,8 @@ export default function Costos() {
 
                             <button
                                 onClick={() =>
-                                    updateFixedCosts(fixedCosts.filter((_, i) => i !== idx))
+                                    setToDeleteFixed({ index: idx, name: c.name })
                                 }
-                                className="p-1 hover:bg-red-50 rounded"
                             >
                                 <Trash2 className="w-4 h-4 text-red-500" />
                             </button>
@@ -160,18 +221,19 @@ export default function Costos() {
                     </div>
                 ))}
 
-                <p className="text-sm text-stone-500">
+                <p className="font-semibold">
                     Total fijo: {formatARS(totalFixed)}
                 </p>
             </div>
 
             {/* PIZZAS */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {varieties.map(v => {
+                {varieties.map((v) => {
                     const items = recipes[v.id]?.items || [];
                     const cost = getCost(items);
                     const profit = v.price - cost;
-                    const margin = v.price > 0 ? (profit / v.price) * 100 : 0;
+                    const margin =
+                        v.price > 0 ? (profit / v.price) * 100 : 0;
 
                     return (
                         <div key={v.id} className="bg-white border rounded-xl p-4">
@@ -181,7 +243,7 @@ export default function Costos() {
                                 <div key={idx} className="flex justify-between items-center">
                                     <span>{it.name}</span>
 
-                                    <div className="flex gap-2 items-center">
+                                    <div className="flex gap-2">
                                         <input
                                             type="number"
                                             value={it.cost}
@@ -194,11 +256,13 @@ export default function Costos() {
                                         />
 
                                         <button
-                                            onClick={() => {
-                                                const rec = items.filter((_, i) => i !== idx);
-                                                updateRecipe(v.id, rec);
-                                            }}
-                                            className="p-1 hover:bg-red-50 rounded"
+                                            onClick={() =>
+                                                setToDeleteIngredient({
+                                                    varietyId: v.id,
+                                                    index: idx,
+                                                    name: it.name,
+                                                })
+                                            }
                                         >
                                             <Trash2 className="w-4 h-4 text-red-500" />
                                         </button>
@@ -220,18 +284,12 @@ export default function Costos() {
 
                             <p>Precio: {formatARS(v.price)}</p>
                             <p>Costo: {formatARS(cost)}</p>
+
                             <p className="text-green-600 font-semibold">
                                 Ganancia: {formatARS(profit)}
                             </p>
 
-                            <p
-                                className={`text-sm font-semibold ${margin >= 50
-                                    ? "text-emerald-600"
-                                    : margin >= 30
-                                        ? "text-amber-600"
-                                        : "text-red-600"
-                                    }`}
-                            >
+                            <p className="text-sm font-semibold">
                                 Margen: {margin.toFixed(1)}%
                             </p>
                         </div>
@@ -252,7 +310,6 @@ export default function Costos() {
                         onKeyDown={(e) => {
                             if (e.key === "Enter") {
                                 e.preventDefault();
-
                                 if (!newName) return;
 
                                 const rec = recipes[activePizza]?.items || [];
@@ -266,32 +323,8 @@ export default function Costos() {
                                 setOpenAdd(false);
                             }
                         }}
-                        placeholder="Ej: muzzarella"
                         className="border rounded px-3 py-2 w-full"
                     />
-
-                    <div className="flex justify-end gap-2 mt-4">
-                        <button onClick={() => setOpenAdd(false)}>Cancelar</button>
-
-                        <button
-                            onClick={() => {
-                                if (!newName) return;
-
-                                const rec = recipes[activePizza]?.items || [];
-
-                                updateRecipe(activePizza, [
-                                    ...rec,
-                                    { name: newName, cost: 0 },
-                                ]);
-
-                                setNewName("");
-                                setOpenAdd(false);
-                            }}
-                            className="bg-orange-600 text-white px-3 py-1 rounded"
-                        >
-                            Agregar
-                        </button>
-                    </div>
                 </DialogContent>
             </Dialog>
 
@@ -305,32 +338,63 @@ export default function Costos() {
                     <input
                         value={newFixed}
                         onChange={(e) => setNewFixed(e.target.value)}
-                        placeholder="Ej: caja"
                         className="border rounded px-3 py-2 w-full"
                     />
 
-                    <div className="flex justify-end gap-2 mt-4">
-                        <button onClick={() => setOpenFixed(false)}>Cancelar</button>
+                    <button
+                        onClick={() => {
+                            if (!newFixed) return;
 
-                        <button
-                            onClick={() => {
-                                if (!newFixed) return;
+                            updateFixedCosts([
+                                ...fixedCosts,
+                                { name: newFixed, cost: 0 },
+                            ]);
 
-                                updateFixedCosts([
-                                    ...fixedCosts,
-                                    { name: newFixed, cost: 0 },
-                                ]);
-
-                                setNewFixed("");
-                                setOpenFixed(false);
-                            }}
-                            className="bg-orange-600 text-white px-3 py-1 rounded"
-                        >
-                            Agregar
-                        </button>
-                    </div>
+                            setNewFixed("");
+                            setOpenFixed(false);
+                        }}
+                        className="mt-3 bg-orange-600 text-white px-3 py-1 rounded"
+                    >
+                        Agregar
+                    </button>
                 </DialogContent>
             </Dialog>
+
+            {/* DELETE INGREDIENTE */}
+            <ConfirmDeleteDialog
+                open={!!toDeleteIngredient}
+                onClose={() => setToDeleteIngredient(null)}
+                title="Eliminar ingrediente"
+                description={`Eliminar "${toDeleteIngredient?.name}"`}
+                onConfirm={() => {
+                    const { varietyId, index } = toDeleteIngredient;
+
+                    const items = recipes[varietyId]?.items || [];
+
+                    const updated = items.filter((_, i) => i !== index);
+
+                    updateRecipe(varietyId, updated);
+
+                    setToDeleteIngredient(null);
+                }}
+            />
+
+            {/* DELETE COSTO FIJO */}
+            <ConfirmDeleteDialog
+                open={!!toDeleteFixed}
+                onClose={() => setToDeleteFixed(null)}
+                title="Eliminar costo fijo"
+                description={`Eliminar "${toDeleteFixed?.name}"`}
+                onConfirm={() => {
+                    const updated = fixedCosts.filter(
+                        (_, i) => i !== toDeleteFixed.index
+                    );
+
+                    updateFixedCosts(updated);
+
+                    setToDeleteFixed(null);
+                }}
+            />
         </div>
     );
 }

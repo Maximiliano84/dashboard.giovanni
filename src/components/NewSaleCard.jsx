@@ -69,9 +69,9 @@ export default function NewSaleCard({ varieties, onCreated }) {
   };
 
   return (
-    <Card className="lg:col-span-1" data-testid="card-form-venta">
+    <Card className="flex flex-col self-start">
       <CardHeader><CardTitle className="font-display text-base text-stone-800">Nueva venta</CardTitle></CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-y-auto">
         {varieties.length === 0 ? (
           <NoVarieties />
         ) : (

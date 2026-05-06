@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
 
@@ -10,14 +10,26 @@ export default function Gastos() {
   const [expenses, setExpenses] = useState([]);
 
   // ======================
+  // HELPERS
+  // ======================
+  const normalizeDate = (d) => {
+    if (!d) return null;
+    if (d?.toDate) return d.toDate().toISOString().slice(0, 10);
+    if (typeof d === "string") return d.slice(0, 10);
+    return null;
+  };
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // ======================
   // CARGAR CATEGORÍAS
   // ======================
   const loadCategories = async () => {
     const snap = await getDocs(collection(db, "expense_categories"));
 
-    const data = snap.docs.map(doc => ({
+    const data = snap.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
 
     setCategories(data);
@@ -34,13 +46,23 @@ export default function Gastos() {
 
     const snap = await getDocs(q);
 
-    const data = snap.docs.map(doc => ({
+    const data = snap.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
 
     setExpenses(data);
   };
+
+  // ======================
+  // FILTRAR SOLO HOY
+  // ======================
+  const todayExpenses = useMemo(() => {
+    return expenses.filter((e) => {
+      const date = normalizeDate(e.date || e.created_at);
+      return date === today;
+    });
+  }, [expenses]);
 
   // ======================
   // CARGAR TODO
@@ -70,16 +92,19 @@ export default function Gastos() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* 🔥 CLAVE: items-start */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+
         <NewExpenseCard
           categories={categories}
           onCreated={loadAll}
         />
 
         <ExpensesHistoryCard
-          expenses={expenses}
+          expenses={todayExpenses}
           onDeleted={loadAll}
         />
+
       </div>
     </div>
   );

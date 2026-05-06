@@ -42,10 +42,26 @@ export default function Ventas() {
 
     const snap = await getDocs(q);
 
-    const data = snap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const normalizeDate = (d) => {
+      if (!d) return null;
+      if (d?.toDate) return d.toDate().toISOString().slice(0, 10);
+      if (typeof d === "string") return d.slice(0, 10);
+      return null;
+    };
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const data = snap.docs
+      .map(doc => {
+        const d = doc.data();
+
+        return {
+          id: doc.id,
+          ...d,
+          date: normalizeDate(d.date || d.created_at),
+        };
+      })
+      .filter(s => s.date === today);
 
     console.log("SALES:", data); // 👈 DEBUG
     setSales(data);
@@ -65,7 +81,7 @@ export default function Ventas() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Ventas</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
         <NewSaleCard varieties={varieties} onCreated={loadAll} />
         <SalesHistoryCard
           sales={sales}
