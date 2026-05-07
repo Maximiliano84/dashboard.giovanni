@@ -57,7 +57,7 @@ export default function ExpensesHistoryCard({ expenses = [], onDeleted }) {
 
   return (
     <>
-      <Card className="lg:col-span-2 h-[560px] flex flex-col">
+      <Card className="lg:col-span-2 max-h-[438px] flex flex-col">
         {/* HEADER */}
         <CardHeader className="flex-row items-center justify-between border-b shrink-0">
           <CardTitle className="text-base text-stone-800">
@@ -80,53 +80,58 @@ export default function ExpensesHistoryCard({ expenses = [], onDeleted }) {
           {sortedExpenses.length === 0 ? (
             <EmptyState />
           ) : (
-            <div className="divide-y">
-              {sortedExpenses.map((e) => (
-                <div
-                  key={e.id}
-                  className="flex items-center justify-between p-4 hover:bg-stone-50 transition"
-                >
-                  {/* LEFT */}
-                  <div className="min-w-0">
-                    <div className="font-semibold text-stone-900 truncate">
-                      {e.category_name || "Sin categoría"}
-                    </div>
-
-                    {e.description && (
-                      <div className="text-sm text-stone-500 truncate">
-                        {e.description}
+            <div className="h-full overflow-y-auto">
+              <div className="divide-y">
+                {sortedExpenses.map((e) => (
+                  <div
+                    key={e.id}
+                    className="flex items-center justify-between p-4 hover:bg-stone-50"
+                  >
+                    <div>
+                      <div className="font-semibold text-stone-900">
+                        {e.category_name || "Sin categoría"}
                       </div>
-                    )}
 
-                    <div className="text-xs text-stone-400 mt-1">
-                      {formatDateAR(e.date)}
+                      {e.description && (
+                        <div className="text-sm text-stone-500">
+                          {e.description}
+                        </div>
+                      )}
+
+                      <div className="text-xs text-stone-400 mt-1">
+                        {formatDateAR(e.date)}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="font-semibold">
+                        {formatARS(e.amount)}
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setToDelete(e)}
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-600" />
+                      </Button>
                     </div>
                   </div>
-
-                  {/* RIGHT */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="font-semibold text-stone-900">
-                      {formatARS(e.amount)}
-                    </div>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setToDelete(e)}
-                    >
-                      <Trash2 className="w-4 h-4 text-rose-600" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
+
+
+
+
         </CardContent>
-      </Card>
+      </Card >
 
       {/* 🔴 MODAL UNIFICADO */}
-      <ConfirmDeleteDialog
-        open={!!toDelete}
+      < ConfirmDeleteDialog
+        open={!!toDelete
+        }
         onClose={() => setToDelete(null)}
         onConfirm={handleDelete}
         loading={loadingDelete}
