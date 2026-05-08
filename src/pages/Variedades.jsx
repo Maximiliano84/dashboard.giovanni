@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
+import { getVarieties } from "../services/varietiesService";
 
 import { Button } from "../components/ui/button";
 import { Plus } from "lucide-react";
@@ -16,13 +15,7 @@ export default function Variedades() {
   // ================= LOAD =================
   const load = useCallback(async () => {
     try {
-      const snapshot = await getDocs(collection(db, "varieties"));
-
-      const list = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
+      const list = await getVarieties();
       setItems(list);
     } catch (err) {
       console.error("Error cargando variedades:", err);

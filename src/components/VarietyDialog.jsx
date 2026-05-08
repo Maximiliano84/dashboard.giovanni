@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-import { db } from "../firebase";
-import { collection, addDoc, updateDoc, doc } from "firebase/firestore";
+import {
+  createVariety,
+  updateVariety,
+} from "../services/varietiesService";
 import {
   Dialog,
   DialogContent,
@@ -32,21 +34,24 @@ export default function VarietyDialog({ open, onOpenChange, variety, onSaved }) 
 
     const p = parseFloat(price);
 
-    if (!name.trim()) return toast.error("El nombre es obligatorio");
-    if (isNaN(p) || p < 0) return toast.error("Precio inválido");
+    if (!name.trim()) {
+      return toast.error("El nombre es obligatorio");
+    }
+
+    if (isNaN(p) || p < 0) {
+      return toast.error("Precio inválido");
+    }
 
     try {
       if (editing) {
-        const ref = doc(db, "varieties", variety.id);
-
-        await updateDoc(ref, {
+        await updateVariety(variety.id, {
           name,
           price: p,
         });
 
         toast.success("Variedad actualizada");
       } else {
-        await addDoc(collection(db, "varieties"), {
+        await createVariety({
           name,
           price: p,
           created_at: new Date(),

@@ -6,8 +6,7 @@ import { Pizza, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 // 🔥 Firebase
-import { db } from "../firebase";
-import { doc, deleteDoc } from "firebase/firestore";
+import { deleteVariety } from "../services/varietiesService";
 
 // 🔥 MODAL GLOBAL
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
@@ -23,7 +22,7 @@ export default function VarietiesList({ items, onAdd, onEdit, onChanged }) {
     try {
       setLoadingDelete(true);
 
-      await deleteDoc(doc(db, "varieties", toDelete.id));
+      await deleteVariety(toDelete.id);
 
       toast.success("Variedad eliminada");
 
