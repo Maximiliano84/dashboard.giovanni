@@ -1,108 +1,101 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+    useEffect,
+    useMemo,
+    useState,
+    useCallback,
+} from "react";
 
 import {
-    collection,
-    getDocs,
-    updateDoc,
-    addDoc,
-    doc,
-} from "firebase/firestore";
+    getVarieties,
+} from "../services/varietiesService";
 
-import { db } from "../firebase";
+import {
+    getRecipes,
+    createRecipe,
+    updateRecipe as updateRecipeService,
+} from "../services/recipesService";
+
+import {
+    getSettings,
+    createSettings,
+    updateSettings,
+} from "../services/settingsService";
+
+import {
+    getSales,
+} from "../services/salesService";
 
 export default function useCostsData() {
-    const [varieties, setVarieties] = useState([]);
-    const [recipes, setRecipes] = useState({});
-    const [settingsId, setSettingsId] = useState(null);
-    const [fixedCosts, setFixedCosts] = useState([]);
+    const [varieties, setVarieties] =
+        useState([]);
+
+    const [recipes, setRecipes] =
+        useState({});
+
+    const [settingsId, setSettingsId] =
+        useState(null);
+
+    const [fixedCosts, setFixedCosts] =
+        useState([]);
+
     const [sales, setSales] = useState([]);
 
     // ================= LOAD =================
+
+    const load = async () => {
+        const [
+            varietiesData,
+            recipesData,
+            settingsData,
+            salesData,
+        ] = await Promise.all([
+            getVarieties(),
+            getRecipes(),
+            getSettings(),
+            getSales(),
+        ]);
+
+        setVarieties(varietiesData);
+
+        setRecipes(recipesData);
+
+        setFixedCosts(
+            settingsData.fixed_costs || []
+        );
+
+        setSettingsId(settingsData.id);
+
+        setSales(salesData);
+    };
 
     useEffect(() => {
         load();
     }, []);
 
-    const load = async () => {
-        const [
-            vSnap,
-            rSnap,
-            sSnap,
-            salesSnap,
-        ] = await Promise.all([
-            getDocs(collection(db, "varieties")),
-            getDocs(collection(db, "recipes")),
-            getDocs(collection(db, "settings")),
-            getDocs(collection(db, "sales")),
-        ]);
-
-        const v = vSnap.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-        }));
-
-        const r = {};
-
-        rSnap.docs.forEach((d) => {
-            const data = d.data();
-
-            r[data.variety_id] = {
-                id: d.id,
-                items: data.items || [],
-            };
-        });
-
-        let fc = [];
-        let sid = null;
-
-        if (sSnap.docs.length > 0) {
-            const data = sSnap.docs[0];
-
-            fc = data.data().fixed_costs || [];
-            sid = data.id;
-        }
-
-        const s = salesSnap.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-        }));
-
-        setVarieties(v);
-        setRecipes(r);
-        setFixedCosts(fc);
-        setSettingsId(sid);
-        setSales(s);
-    };
-
     // ================= FIXED COSTS =================
 
-    const updateFixedCosts = async (
-        newCosts
-    ) => {
-        setFixedCosts(newCosts);
+    const updateFixedCosts =
+        async (newCosts) => {
+            setFixedCosts(newCosts);
 
-        if (settingsId) {
-            await updateDoc(
-                doc(
-                    db,
-                    "settings",
-                    settingsId
-                ),
-                {
-                    fixed_costs: newCosts,
-                }
-            );
-        } else {
-            const ref = await addDoc(
-                collection(db, "settings"),
-                {
-                    fixed_costs: newCosts,
-                }
-            );
+            if (settingsId) {
+                await updateSettings(
+                    settingsId,
+                    {
+                        fixed_costs:
+                            newCosts,
+                    }
+                );
+            } else {
+                const ref =
+                    await createSettings({
+                        fixed_costs:
+                            newCosts,
+                    });
 
-            setSettingsId(ref.id);
-        }
-    };
+                setSettingsId(ref.id);
+            }
+        };
 
     // ================= RECIPES =================
 
@@ -113,8 +106,8 @@ export default function useCostsData() {
         const rec = recipes[varietyId];
 
         if (rec?.id) {
-            await updateDoc(
-                doc(db, "recipes", rec.id),
+            await updateRecipeService(
+                rec.id,
                 {
                     items,
                 }
@@ -122,22 +115,24 @@ export default function useCostsData() {
 
             setRecipes((prev) => ({
                 ...prev,
+
                 [varietyId]: {
                     ...rec,
                     items,
                 },
             }));
         } else {
-            const ref = await addDoc(
-                collection(db, "recipes"),
-                {
-                    variety_id: varietyId,
+            const ref =
+                await createRecipe({
+                    variety_id:
+                        varietyId,
+
                     items,
-                }
-            );
+                });
 
             setRecipes((prev) => ({
                 ...prev,
+
                 [varietyId]: {
                     id: ref.id,
                     items,
@@ -148,41 +143,56 @@ export default function useCostsData() {
 
     // ================= CALCULOS =================
 
-    const totalFixed = fixedCosts.reduce(
-        (acc, c) => acc + (c.cost || 0),
-        0
-    );
-
-    const getCost = (items = []) => {
-        const local = items.reduce(
-            (acc, i) =>
-                acc + (i.cost || 0),
+    const totalFixed =
+        fixedCosts.reduce(
+            (acc, c) =>
+                acc + (c.cost || 0),
             0
         );
 
-        return local + totalFixed;
-    };
+    const getCost = useCallback(
+        (items = []) => {
+            const local =
+                items.reduce(
+                    (acc, i) =>
+                        acc +
+                        (i.cost || 0),
+                    0
+                );
+
+            return (
+                local + totalFixed
+            );
+        },
+
+        [totalFixed]
+    );
 
     // ================= RENTABILIDAD =================
 
     const rentabilidad = useMemo(() => {
         let totalVentas = 0;
+
         let totalGanancia = 0;
+
         let totalPizzas = 0;
 
         sales.forEach((s) => {
-            const variety = varieties.find(
-                (v) =>
-                    v.id === s.variety_id
-            );
+            const variety =
+                varieties.find(
+                    (v) =>
+                        v.id ===
+                        s.variety_id
+                );
 
             if (!variety) return;
 
             const items =
-                recipes[variety.id]?.items ||
-                [];
+                recipes[variety.id]
+                    ?.items || [];
 
-            const costo = getCost(items);
+            const costo =
+                getCost(items);
 
             const precio =
                 s.unit_price ||
@@ -200,7 +210,10 @@ export default function useCostsData() {
                 cantidad;
 
             totalVentas += ingreso;
-            totalGanancia += ganancia;
+
+            totalGanancia +=
+                ganancia;
+
             totalPizzas += cantidad;
         });
 
@@ -222,7 +235,7 @@ export default function useCostsData() {
         sales,
         varieties,
         recipes,
-        totalFixed,
+        getCost,
     ]);
 
     return {

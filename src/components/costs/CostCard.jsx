@@ -1,13 +1,13 @@
 import { Trash2 } from "lucide-react";
 import { formatARS } from "../../lib/api";
 
-export default function VarietyCostCard({
+export default function CostCard({
     variety,
     items,
     cost,
-    onUpdateCost,
+    onIngredientCostChange,
     onDeleteIngredient,
-    onOpenAddIngredient,
+    onAddIngredient,
 }) {
     const profit = variety.price - cost;
 
@@ -34,7 +34,7 @@ export default function VarietyCostCard({
                             type="number"
                             value={it.cost}
                             onChange={(e) =>
-                                onUpdateCost(
+                                onIngredientCostChange(
                                     idx,
                                     Number(e.target.value) || 0
                                 )
@@ -44,10 +44,7 @@ export default function VarietyCostCard({
 
                         <button
                             onClick={() =>
-                                onDeleteIngredient({
-                                    index: idx,
-                                    name: it.name,
-                                })
+                                onDeleteIngredient(idx, it.name)
                             }
                         >
                             <Trash2 className="w-4 h-4 text-red-500" />
@@ -57,7 +54,7 @@ export default function VarietyCostCard({
             ))}
 
             <button
-                onClick={onOpenAddIngredient}
+                onClick={onAddIngredient}
                 className="text-orange-600 text-sm mt-2"
             >
                 + Agregar ingrediente

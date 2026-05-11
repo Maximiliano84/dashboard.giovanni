@@ -1,6 +1,8 @@
 import { formatARS } from "../../lib/api";
 
-export default function CostSummaryCards({ rentabilidad }) {
+export default function CostsSummary({
+    rentabilidad,
+}) {
     return (
         <div className="grid grid-cols-2 gap-4">
             <div className="bg-white border rounded-xl p-4">
@@ -21,7 +23,10 @@ export default function CostSummaryCards({ rentabilidad }) {
                 </p>
 
                 <p className="text-xl font-bold text-orange-600">
-                    {rentabilidad.margenPromedio.toFixed(1)}%
+                    {rentabilidad.margenPromedio.toFixed(
+                        1
+                    )}
+                    %
                 </p>
             </div>
         </div>

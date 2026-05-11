@@ -1,20 +1,16 @@
-import { useState } from "react";
+
 import useCostsData from "../hooks/useCostsData";
+import useIngredientManager from "../hooks/useIngredientManager";
+import useFixedCostsManager from "../hooks/useFixedCostsManager";
 
 import { formatARS } from "../lib/api";
+
 import FixedCostsCard from "../components/costs/FixedCostsCard";
-import VarietyCostCard from "../components/costs/VarietyCostCard";
-import CostSummaryCards from "../components/costs/CostSummaryCards";
-import PizzaCostCard from "../components/costs/PizzaCostCard";
+import FixedCostDialog from "../components/costs/FixedCostDialog";
+import CostCard from "../components/costs/CostCard";
+import CostsSummary from "../components/costs/CostsSummary";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialog";
 import IngredientDialog from "../components/costs/IngredientDialog";
-
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "../components/ui/dialog";
 
 export default function Costos() {
     const {
@@ -28,51 +24,48 @@ export default function Costos() {
         getCost,
     } = useCostsData();
 
-    // ================= MODALES =================
-    const [openAdd, setOpenAdd] = useState(false);
-    const [newName, setNewName] = useState("");
-    const [activePizza, setActivePizza] = useState(null);
+    // ================= INGREDIENT MANAGER =================
 
-    const [openFixed, setOpenFixed] = useState(false);
-    const [newFixed, setNewFixed] = useState("");
+    const {
+        openAdd,
+        setOpenAdd,
 
-    // ================= DELETE =================
-    const [toDeleteIngredient, setToDeleteIngredient] = useState(null);
-    const [toDeleteFixed, setToDeleteFixed] = useState(null);
+        newName,
+        setNewName,
 
-    // ================= ADD INGREDIENT =================
-    const handleAddIngredient = async () => {
-        if (!newName.trim()) return;
+        toDeleteIngredient,
+        setToDeleteIngredient,
 
-        const rec = recipes[activePizza]?.items || [];
+        handleAddIngredient,
+        handleOpenIngredientModal,
+        handleIngredientCostChange,
+        handleDeleteIngredient,
+        confirmDeleteIngredient,
+    } = useIngredientManager({
+        recipes,
+        updateRecipe,
+    });
 
-        await updateRecipe(activePizza, [
-            ...rec,
-            {
-                name: newName,
-                cost: 0,
-            },
-        ]);
+    // ================= FIXED COSTS MANAGER =================
 
-        setNewName("");
-        setOpenAdd(false);
-    };
+    const {
+        openFixed,
+        setOpenFixed,
 
-    // ================= ADD FIXED =================
-    const handleAddFixed = async () => {
-        if (!newFixed.trim()) return;
+        newFixed,
+        setNewFixed,
 
-        await updateFixedCosts([
-            ...fixedCosts,
-            {
-                name: newFixed,
-                cost: 0,
-            },
-        ]);
+        toDeleteFixed,
+        setToDeleteFixed,
 
-        setNewFixed("");
-        setOpenFixed(false);
-    };
+        handleAddFixed,
+        handleUpdateFixed,
+        handleDeleteFixed,
+        confirmDeleteFixed,
+    } = useFixedCostsManager({
+        fixedCosts,
+        updateFixedCosts,
+    });
 
     return (
         <div className="p-6 space-y-6">
@@ -81,63 +74,77 @@ export default function Costos() {
             </h1>
 
             {/* RESUMEN */}
-            <CostSummaryCards
+
+            <CostsSummary
                 rentabilidad={rentabilidad}
             />
 
             {/* COSTOS FIJOS */}
+
             <FixedCostsCard
                 fixedCosts={fixedCosts}
                 totalFixed={totalFixed}
                 formatARS={formatARS}
-                onAdd={() => setOpenFixed(true)}
-                onDelete={setToDeleteFixed}
-                onUpdate={(idx, value) => {
-                    const arr = [...fixedCosts];
-
-                    arr[idx].cost = value;
-
-                    updateFixedCosts(arr);
-                }}
+                onAdd={() =>
+                    setOpenFixed(true)
+                }
+                onDelete={
+                    handleDeleteFixed
+                }
+                onUpdate={
+                    handleUpdateFixed
+                }
             />
 
             {/* PIZZAS */}
+
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {varieties.map((v) => {
-                    const items = recipes[v.id]?.items || [];
+                    const items =
+                        recipes[v.id]?.items || [];
 
-                    const cost = getCost(items);
+                    const cost =
+                        getCost(items);
 
                     return (
-                        <VarietyCostCard
+                        <CostCard
                             key={v.id}
                             variety={v}
                             items={items}
                             cost={cost}
-                            onUpdateCost={(idx, value) => {
-                                const rec = [...items];
-
-                                rec[idx].cost = value;
-
-                                updateRecipe(v.id, rec);
-                            }}
-                            onDeleteIngredient={({ index, name }) =>
-                                setToDeleteIngredient({
-                                    varietyId: v.id,
-                                    index,
-                                    name,
-                                })
+                            onIngredientCostChange={(
+                                idx,
+                                value
+                            ) =>
+                                handleIngredientCostChange(
+                                    v.id,
+                                    items,
+                                    idx,
+                                    value
+                                )
                             }
-                            onOpenAddIngredient={() => {
-                                setActivePizza(v.id);
-                                setOpenAdd(true);
-                            }}
+                            onDeleteIngredient={(
+                                idx,
+                                name
+                            ) =>
+                                handleDeleteIngredient(
+                                    v.id,
+                                    idx,
+                                    name
+                                )
+                            }
+                            onAddIngredient={() =>
+                                handleOpenIngredientModal(
+                                    v.id
+                                )
+                            }
                         />
                     );
                 })}
             </div>
 
             {/* MODAL INGREDIENTE */}
+
             <IngredientDialog
                 open={openAdd}
                 onOpenChange={(value) => {
@@ -149,83 +156,45 @@ export default function Costos() {
                 }}
                 value={newName}
                 onChange={setNewName}
-                onConfirm={handleAddIngredient}
+                onConfirm={
+                    handleAddIngredient
+                }
             />
 
             {/* MODAL COSTO FIJO */}
-            <Dialog
+
+            <FixedCostDialog
                 open={openFixed}
-                onOpenChange={setOpenFixed}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>
-                            Nuevo costo fijo
-                        </DialogTitle>
-                    </DialogHeader>
+                onOpenChange={(value) => {
+                    setOpenFixed(value);
 
-                    <input
-                        value={newFixed}
-                        onChange={(e) =>
-                            setNewFixed(e.target.value)
-                        }
-                        placeholder="Ej: caja"
-                        className="border rounded px-3 py-2 w-full"
-                        autoFocus
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                handleAddFixed();
-                            }
-                        }}
-                    />
-
-                    <div className="flex justify-end gap-2 pt-4">
-                        <button
-                            onClick={() => {
-                                setOpenFixed(false);
-                                setNewFixed("");
-                            }}
-                            className="px-3 py-2 text-sm rounded-lg hover:bg-stone-100"
-                        >
-                            Cancelar
-                        </button>
-
-                        <button
-                            onClick={handleAddFixed}
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm"
-                        >
-                            Agregar
-                        </button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+                    if (!value) {
+                        setNewFixed("");
+                    }
+                }}
+                value={newFixed}
+                onChange={setNewFixed}
+                onConfirm={handleAddFixed}
+            />
 
             {/* DELETE INGREDIENTE */}
+
             <ConfirmDeleteDialog
                 open={!!toDeleteIngredient}
                 onClose={() =>
-                    setToDeleteIngredient(null)
+                    setToDeleteIngredient(
+                        null
+                    )
                 }
                 title="Eliminar ingrediente"
                 description={`Eliminar "${toDeleteIngredient?.name}"`}
-                onConfirm={() => {
-                    const { varietyId, index } =
-                        toDeleteIngredient;
-
-                    const items =
-                        recipes[varietyId]?.items || [];
-
-                    const updated = items.filter(
-                        (_, i) => i !== index
-                    );
-
-                    updateRecipe(varietyId, updated);
-
-                    setToDeleteIngredient(null);
-                }}
+                onConfirm={
+                    confirmDeleteIngredient
+                }
             />
 
             {/* DELETE COSTO FIJO */}
+
             <ConfirmDeleteDialog
                 open={!!toDeleteFixed}
                 onClose={() =>
@@ -233,16 +202,9 @@ export default function Costos() {
                 }
                 title="Eliminar costo fijo"
                 description={`Eliminar "${toDeleteFixed?.name}"`}
-                onConfirm={() => {
-                    const updated = fixedCosts.filter(
-                        (_, i) =>
-                            i !== toDeleteFixed.index
-                    );
-
-                    updateFixedCosts(updated);
-
-                    setToDeleteFixed(null);
-                }}
+                onConfirm={
+                    confirmDeleteFixed
+                }
             />
         </div>
     );
