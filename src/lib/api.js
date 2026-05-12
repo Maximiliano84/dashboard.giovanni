@@ -11,8 +11,34 @@ export const formatARS = (n) => {
 };
 
 export function formatDateAR(date) {
-  const d = new Date(date);
-  return d.toLocaleDateString("es-AR");
+  if (!date) return "-";
+
+  // Firestore Timestamp
+  if (typeof date?.toDate === "function") {
+    return date
+      .toDate()
+      .toLocaleDateString("es-AR");
+  }
+
+  // String YYYY-MM-DD
+  if (typeof date === "string") {
+    const [year, month, day] =
+      date.split("-");
+
+    const d = new Date(
+      year,
+      month - 1,
+      day
+    );
+
+    return d.toLocaleDateString(
+      "es-AR"
+    );
+  }
+
+  // Date normal
+  return new Date(date)
+    .toLocaleDateString("es-AR");
 }
 
 export const todayISO = () => {

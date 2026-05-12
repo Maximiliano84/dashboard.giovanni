@@ -12,7 +12,7 @@ import {
 import {
     getRecipes,
     createRecipe,
-    updateRecipe as updateRecipeService,
+    updateRecipeService,
 } from "../services/recipesService";
 
 import {

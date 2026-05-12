@@ -1,4 +1,3 @@
-import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { formatARS, formatDateAR } from "../lib/api";
 import { Pizza } from "lucide-react";

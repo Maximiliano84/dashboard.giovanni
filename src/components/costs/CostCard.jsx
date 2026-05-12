@@ -1,7 +1,10 @@
+import React, { useMemo } from "react";
+
 import { Trash2 } from "lucide-react";
+
 import { formatARS } from "../../lib/api";
 
-export default function CostCard({
+function CostCard({
     variety,
     items,
     cost,
@@ -9,12 +12,27 @@ export default function CostCard({
     onDeleteIngredient,
     onAddIngredient,
 }) {
-    const profit = variety.price - cost;
+    const profit = useMemo(() => {
+        return variety.price - cost;
+    }, [variety.price, cost]);
 
-    const margin =
-        variety.price > 0
+    const margin = useMemo(() => {
+        return variety.price > 0
             ? (profit / variety.price) * 100
             : 0;
+    }, [profit, variety.price]);
+
+    const marginColor = useMemo(() => {
+        if (margin >= 50) {
+            return "text-emerald-600";
+        }
+
+        if (margin >= 30) {
+            return "text-amber-600";
+        }
+
+        return "text-red-600";
+    }, [margin]);
 
     return (
         <div className="bg-white border rounded-xl p-4">
@@ -36,7 +54,9 @@ export default function CostCard({
                             onChange={(e) =>
                                 onIngredientCostChange(
                                     idx,
-                                    Number(e.target.value) || 0
+                                    Number(
+                                        e.target.value
+                                    ) || 0
                                 )
                             }
                             className="border rounded px-2 py-1 w-20 text-right"
@@ -44,7 +64,10 @@ export default function CostCard({
 
                         <button
                             onClick={() =>
-                                onDeleteIngredient(idx, it.name)
+                                onDeleteIngredient(
+                                    idx,
+                                    it.name
+                                )
                             }
                         >
                             <Trash2 className="w-4 h-4 text-red-500" />
@@ -54,7 +77,9 @@ export default function CostCard({
             ))}
 
             <button
-                onClick={onAddIngredient}
+                onClick={
+                    onAddIngredient
+                }
                 className="text-orange-600 text-sm mt-2"
             >
                 + Agregar ingrediente
@@ -63,7 +88,10 @@ export default function CostCard({
             <hr className="my-2" />
 
             <p>
-                Precio: {formatARS(variety.price)}
+                Precio:{" "}
+                {formatARS(
+                    variety.price
+                )}
             </p>
 
             <p>
@@ -71,19 +99,18 @@ export default function CostCard({
             </p>
 
             <p className="text-green-600 font-semibold">
-                Ganancia: {formatARS(profit)}
+                Ganancia:{" "}
+                {formatARS(profit)}
             </p>
 
             <p
-                className={`text-sm font-semibold ${margin >= 50
-                        ? "text-emerald-600"
-                        : margin >= 30
-                            ? "text-amber-600"
-                            : "text-red-600"
-                    }`}
+                className={`text-sm font-semibold ${marginColor}`}
             >
-                Margen: {margin.toFixed(1)}%
+                Margen:{" "}
+                {margin.toFixed(1)}%
             </p>
         </div>
     );
 }
+
+export default React.memo(CostCard);

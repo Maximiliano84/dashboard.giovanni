@@ -25,10 +25,24 @@ const trendTooltipFormatter = (value, name) => [
   formatARS(value),
   name === "sales" ? "Ventas" : name === "expenses" ? "Gastos" : "Ganancia",
 ];
-const topVarietiesFormatter = (value, _name, payload) => [
-  `${value} unidades · ${formatARS(payload.payload.revenue)}`,
-  payload.payload.variety_name,
-];
+const topVarietiesFormatter = (
+  value,
+  _name,
+  payload
+) => {
+  const quantity =
+    payload.payload.quantity;
+
+  return [
+    `${formatARS(value)} · ${quantity} ${quantity === 1
+      ? "unidad"
+      : "unidades"
+    }`,
+
+    payload.payload.variety_name,
+  ];
+};
+
 const emptyLabelFormatter = () => "";
 
 export function TrendChart({ data, title = "Tendencia últimos 30 días", testid }) {
@@ -106,9 +120,9 @@ export function TopVarietiesChart({ data, title = "Top variedades", testid }) {
                 formatter={topVarietiesFormatter}
                 labelFormatter={emptyLabelFormatter}
               />
-              <Bar dataKey="quantity" radius={BAR_RADIUS}>
+              <Bar dataKey="total" radius={BAR_RADIUS}>
                 {data.map((entry, idx) => (
-                  <Cell key={entry.variety_id} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                  <Cell key={`${entry.variety_name}-${idx}`} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>

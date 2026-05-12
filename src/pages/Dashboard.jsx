@@ -159,17 +159,48 @@ export default function Dashboard() {
   const trendMap = {};
 
   ventasFiltradas.forEach((sale) => {
-    const date = normalizeDate(sale.date);
+    const date =
+      normalizeDate(sale.date);
+
     if (!date) return;
 
     if (!trendMap[date]) {
-      trendMap[date] = { date, sales: 0 };
+      trendMap[date] = {
+        date,
+
+        sales: 0,
+
+        expenses: 0,
+
+        profit: 0,
+      };
     }
 
-    trendMap[date].sales += sale.total;
+    const sales =
+      Number(sale.total) ||
+      Number(sale.unit_price || 0) *
+      Number(sale.quantity || 0);
+
+    const expenses =
+      Number(sale.cost || 0) *
+      Number(sale.quantity || 0);
+
+    const profit =
+      sales - expenses;
+
+    trendMap[date].sales +=
+      sales;
+
+    trendMap[date].expenses +=
+      expenses;
+
+    trendMap[date].profit +=
+      profit;
   });
 
-  const trendData = Object.values(trendMap).sort((a, b) =>
+  const trendData = Object.values(
+    trendMap
+  ).sort((a, b) =>
     a.date.localeCompare(b.date)
   );
 
@@ -179,23 +210,44 @@ export default function Dashboard() {
   const topMap = {};
 
   ventasFiltradas.forEach((sale) => {
-    const name = sale.variety_name || "Sin nombre";
+    const name =
+      sale.variety_name ||
+      "Sin nombre";
 
     if (!topMap[name]) {
-      topMap[name] = { quantity: 0 };
+      topMap[name] = {
+        quantity: 0,
+        total: 0,
+      };
     }
 
-    topMap[name].quantity += sale.quantity;
-  });
+    topMap[name].quantity +=
+      Number(sale.quantity || 0);
 
-  const topVarieties = Object.entries(topMap)
+    const totalVenta =
+      Number(sale.total) ||
+      Number(sale.unit_price || 0) *
+      Number(sale.quantity || 0);
+
+    topMap[name].total +=
+      totalVenta;
+  });
+  const topVarieties = Object.entries(
+    topMap
+  )
     .map(([name, data]) => ({
       variety_name: name,
-      quantity: data.quantity,
-    }))
-    .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 5);
 
+      quantity: data.quantity,
+
+      total: data.total,
+    }))
+
+    .sort(
+      (a, b) => b.total - a.total
+    )
+
+    .slice(0, 5);
   // ======================
   // RECIENTES
   // ======================
@@ -333,4 +385,4 @@ export default function Dashboard() {
       <RecentSalesCard sales={recentSales} />
     </div>
   );
-}
+}     
